@@ -12,7 +12,7 @@ import sys
 from . import state as state_module
 from . import watchlist
 from .checker import run_check
-from .notifier import SmtpConfig, send_alert_email
+from .notifier import SmtpConfig, send_alert_email, send_test_email
 from .theaters import load_theaters
 
 
@@ -78,6 +78,19 @@ def cmd_check(args: argparse.Namespace) -> None:
     print("Alert email sent.")
 
 
+def cmd_test_email(_args: argparse.Namespace) -> None:
+    config = SmtpConfig.from_env()
+    if config is None:
+        print(
+            "SMTP is not configured (set SMTP_HOST/SMTP_USER/SMTP_PASSWORD/ALERT_TO "
+            "as env vars or in config/config.yaml).",
+            file=sys.stderr,
+        )
+        sys.exit(1)
+    send_test_email(config)
+    print(f"Test email sent to {config.to_addr}.")
+
+
 def main() -> None:
     parser = argparse.ArgumentParser(description="NYC movie watchlist alert tool")
     sub = parser.add_subparsers(dest="command", required=True)
@@ -97,6 +110,9 @@ def main() -> None:
     p_check.add_argument("--dry-run", action="store_true", help="Don't send email or save state")
     p_check.add_argument("--debug", action="store_true", help="Print per-theater fetch diagnostics")
     p_check.set_defaults(func=cmd_check)
+
+    p_test_email = sub.add_parser("test-email", help="Send a test email to confirm SMTP settings work")
+    p_test_email.set_defaults(func=cmd_test_email)
 
     args = parser.parse_args()
     args.func(args)

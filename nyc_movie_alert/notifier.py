@@ -74,6 +74,17 @@ def _format_body(alerts: list[Alert]) -> str:
     return "\n".join(lines)
 
 
+def _send(subject: str, body: str, config: SmtpConfig) -> None:
+    msg = MIMEText(body)
+    msg["Subject"] = subject
+    msg["From"] = config.from_addr
+    msg["To"] = config.to_addr
+
+    with smtplib.SMTP_SSL(config.host, config.port) as server:
+        server.login(config.user, config.password)
+        server.sendmail(config.from_addr, [config.to_addr], msg.as_string())
+
+
 def send_alert_email(alerts: list[Alert], config: SmtpConfig) -> None:
     if not alerts:
         return
@@ -82,11 +93,15 @@ def send_alert_email(alerts: list[Alert], config: SmtpConfig) -> None:
         if len(alerts) == 1
         else f"{len(alerts)} movies from your watchlist are playing in NYC"
     )
-    msg = MIMEText(_format_body(alerts))
-    msg["Subject"] = subject
-    msg["From"] = config.from_addr
-    msg["To"] = config.to_addr
+    _send(subject, _format_body(alerts), config)
 
-    with smtplib.SMTP_SSL(config.host, config.port) as server:
-        server.login(config.user, config.password)
-        server.sendmail(config.from_addr, [config.to_addr], msg.as_string())
+
+def send_test_email(config: SmtpConfig) -> None:
+    """Sends a canned message to confirm SMTP credentials and delivery work,
+    independent of whether any real watchlist match currently exists."""
+    body = (
+        "This is a test email from nyc-movie-alert.\n\n"
+        "If you're reading this, your SMTP settings are correct and alerts "
+        "will reach this address when a real match is found.\n"
+    )
+    _send("nyc-movie-alert test email", body, config)

@@ -4,7 +4,12 @@ on:
   schedule:
     # Every 6 hours
     - cron: "0 */6 * * *"
-  workflow_dispatch: {}
+  workflow_dispatch:
+    inputs:
+      test_email_only:
+        description: "Send a test email instead of running the real check (to confirm SMTP works)"
+        type: boolean
+        default: false
 
 permissions:
   contents: write
@@ -22,7 +27,19 @@ jobs:
       - name: Install dependencies
         run: pip install -r requirements.txt
 
+      - name: Send test email
+        if: ${{ inputs.test_email_only }}
+        env:
+          SMTP_HOST: ${{ secrets.SMTP_HOST }}
+          SMTP_PORT: ${{ secrets.SMTP_PORT }}
+          SMTP_USER: ${{ secrets.SMTP_USER }}
+          SMTP_PASSWORD: ${{ secrets.SMTP_PASSWORD }}
+          ALERT_FROM: ${{ secrets.ALERT_FROM }}
+          ALERT_TO: ${{ secrets.ALERT_TO }}
+        run: python -m nyc_movie_alert.cli test-email
+
       - name: Run watchlist check
+        if: ${{ !inputs.test_email_only }}
         env:
           SMTP_HOST: ${{ secrets.SMTP_HOST }}
           SMTP_PORT: ${{ secrets.SMTP_PORT }}

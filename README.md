@@ -23,6 +23,14 @@ deliberately simple and resilient to page redesigns, but it means:
 
 - It tells you a title is **listed on the page** and gives you the theater's
   link — it does not parse exact showtimes.
+- It can only see what a theater has **already published**, which in practice
+  means today through the next few weeks (repertory houses usually post
+  roughly a month out, chains often just 1-2 weeks). There's no way to check
+  "is this playing in the next 6 months" up front — theaters simply haven't
+  scheduled that far ahead yet. Instead, this runs on a schedule (every 6
+  hours via GitHub Actions) and alerts you the moment a title newly appears,
+  so over a 6-month period you'd naturally be notified as soon as each
+  screening is announced.
 - If a theater redesigns its site to load listings via JavaScript instead of
   plain HTML, that theater's checks will stop finding anything. Run
   `python -m nyc_movie_alert.cli check --debug` to see how many characters
@@ -69,6 +77,9 @@ python -m nyc_movie_alert.cli list
 python -m nyc_movie_alert.cli check            # sends email + saves state
 python -m nyc_movie_alert.cli check --dry-run  # prints matches, sends nothing
 python -m nyc_movie_alert.cli check --debug    # also prints per-theater fetch diagnostics
+
+# confirm your email settings work, without waiting for a real match
+python -m nyc_movie_alert.cli test-email
 ```
 
 ## Running it automatically
@@ -88,7 +99,8 @@ To enable it:
    machine.
 4. You can trigger a run immediately from the Actions tab
    ("Check NYC movie watchlist" → "Run workflow") instead of waiting for the
-   schedule.
+   schedule. Tick the "Send a test email instead" checkbox on that dialog to
+   just confirm email delivery works, without waiting for a real match.
 
 ### Option B: cron on your own machine
 
