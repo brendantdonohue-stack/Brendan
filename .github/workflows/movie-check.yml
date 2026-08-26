@@ -27,6 +27,26 @@ jobs:
       - name: Install dependencies
         run: pip install -r requirements.txt
 
+      - name: Check required secrets
+        env:
+          SMTP_HOST: ${{ secrets.SMTP_HOST }}
+          SMTP_USER: ${{ secrets.SMTP_USER }}
+          SMTP_PASSWORD: ${{ secrets.SMTP_PASSWORD }}
+          ALERT_TO: ${{ secrets.ALERT_TO }}
+        run: |
+          missing=""
+          [ -z "$SMTP_HOST" ] && missing="$missing SMTP_HOST"
+          [ -z "$SMTP_USER" ] && missing="$missing SMTP_USER"
+          [ -z "$SMTP_PASSWORD" ] && missing="$missing SMTP_PASSWORD"
+          [ -z "$ALERT_TO" ] && missing="$missing ALERT_TO"
+          if [ -n "$missing" ]; then
+            echo "::error::Missing required repository secrets:$missing"
+            echo "Add them at: https://github.com/${{ github.repository }}/settings/secrets/actions"
+            echo "(SMTP_PORT and ALERT_FROM are optional and fall back to defaults, so they're not checked here.)"
+            exit 1
+          fi
+          echo "All required secrets are present."
+
       - name: Send test email
         if: ${{ inputs.test_email_only }}
         env:
