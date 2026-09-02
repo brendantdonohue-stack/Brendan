@@ -88,6 +88,10 @@ password) as `smtp_password`.
 Environment variable equivalents: `SMTP_HOST`, `SMTP_PORT`, `SMTP_USER`,
 `SMTP_PASSWORD`, `ALERT_FROM`, `ALERT_TO`.
 
+`ALERT_TO` (and `alert_to` in `config/config.yaml`) can be a single address
+or a comma-separated list, e.g. `brendandon@gmail.com, friend@example.com`,
+to send the same alert to more than one person.
+
 ## Usage
 
 ```bash

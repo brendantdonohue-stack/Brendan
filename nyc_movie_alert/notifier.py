@@ -37,13 +37,14 @@ class SmtpConfig:
     user: str
     password: str
     from_addr: str
-    to_addr: str
+    to_addrs: list[str]
 
     @classmethod
     def from_env(cls) -> "SmtpConfig | None":
         """Reads SMTP_HOST/SMTP_PORT/SMTP_USER/SMTP_PASSWORD/ALERT_FROM/ALERT_TO
         from the environment, falling back to config/config.yaml for any that
-        are unset (see config/config.example.yaml)."""
+        are unset (see config/config.example.yaml). ALERT_TO may be a single
+        address or a comma-separated list, to alert more than one person."""
         file_config: dict = {}
         if CONFIG_YAML_PATH.exists():
             with open(CONFIG_YAML_PATH, encoding="utf-8") as f:
@@ -55,8 +56,11 @@ class SmtpConfig:
         host = get("SMTP_HOST", "smtp_host")
         user = get("SMTP_USER", "smtp_user")
         password = get("SMTP_PASSWORD", "smtp_password")
-        to_addr = get("ALERT_TO", "alert_to")
-        if not (host and user and password and to_addr):
+        to_addr_raw = get("ALERT_TO", "alert_to")
+        if not (host and user and password and to_addr_raw):
+            return None
+        to_addrs = [addr.strip() for addr in str(to_addr_raw).split(",") if addr.strip()]
+        if not to_addrs:
             return None
         return cls(
             host=host,
@@ -64,7 +68,7 @@ class SmtpConfig:
             user=user,
             password=password,
             from_addr=get("ALERT_FROM", "alert_from") or user,
-            to_addr=to_addr,
+            to_addrs=to_addrs,
         )
 
 
@@ -72,7 +76,7 @@ def _send(subject: str, text_body: str, html_body: str, config: SmtpConfig) -> N
     msg = MIMEMultipart("alternative")
     msg["Subject"] = subject
     msg["From"] = config.from_addr
-    msg["To"] = config.to_addr
+    msg["To"] = ", ".join(config.to_addrs)
     # Order matters: email clients that render HTML prefer the last part,
     # so plain text (the fallback) goes first.
     msg.attach(MIMEText(text_body, "plain"))
@@ -80,7 +84,7 @@ def _send(subject: str, text_body: str, html_body: str, config: SmtpConfig) -> N
 
     with smtplib.SMTP_SSL(config.host, config.port) as server:
         server.login(config.user, config.password)
-        server.sendmail(config.from_addr, [config.to_addr], msg.as_string())
+        server.sendmail(config.from_addr, config.to_addrs, msg.as_string())
 
 
 # A running joke: the header is always this exact phrase, no matter which

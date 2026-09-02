@@ -110,7 +110,7 @@ def cmd_test_email(_args: argparse.Namespace) -> None:
         )
         sys.exit(1)
     send_test_email(config)
-    print(f"Test email sent to {config.to_addr}.")
+    print(f"Test email sent to {', '.join(config.to_addrs)}.")
 
 
 def main() -> None:
