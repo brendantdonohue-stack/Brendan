@@ -16,6 +16,7 @@ class FetchStatus:
     length: int
     status_code: int | None = None
     error: str | None = None
+    rendered: bool = False
 
 
 def run_check(
@@ -35,6 +36,7 @@ def run_check(
                 length=len(result.html) if result.html else 0,
                 status_code=result.status_code,
                 error=result.error,
+                rendered=result.rendered,
             )
         )
         if not result.ok:
@@ -66,9 +68,10 @@ def run_check(
 
     if debug:
         for s in statuses:
+            tag = " [rendered]" if s.rendered else ""
             if s.ok:
-                print(f"[debug] {s.theater.name}: OK ({s.length} chars)")
+                print(f"[debug] {s.theater.name}: OK ({s.length} chars){tag}")
             else:
-                print(f"[debug] {s.theater.name}: FAILED ({s.error})")
+                print(f"[debug] {s.theater.name}: FAILED ({s.error}){tag}")
 
     return alerts, statuses

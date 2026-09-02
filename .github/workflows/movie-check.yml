@@ -31,6 +31,15 @@ jobs:
       - name: Install dependencies
         run: pip install -r requirements.txt
 
+      - name: Cache Playwright browsers
+        uses: actions/cache@v4
+        with:
+          path: ~/.cache/ms-playwright
+          key: playwright-${{ runner.os }}-${{ hashFiles('requirements.txt') }}
+
+      - name: Install Playwright browser
+        run: python -m playwright install --with-deps chromium
+
       - name: Check required secrets
         if: ${{ !inputs.diag_only }}
         env:

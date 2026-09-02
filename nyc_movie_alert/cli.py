@@ -87,12 +87,13 @@ def cmd_diag(_args: argparse.Namespace) -> None:
     to fetch, so a broken URL/blocked request can be diagnosed directly."""
     for theater in load_theaters():
         result = fetch(theater.url)
+        tag = " [rendered via headless browser]" if result.rendered else ""
         if not result.ok:
-            print(f'"{theater.name}": FAILED -- {result.error}')
+            print(f'"{theater.name}": FAILED -- {result.error}{tag}')
             continue
         text = visible_text(result.html)
         preview = text[:200].replace("\n", " ")
-        print(f'"{theater.name}": OK, {len(result.html)} raw chars, {len(text)} visible chars')
+        print(f'"{theater.name}": OK, {len(result.html)} raw chars, {len(text)} visible chars{tag}')
         print(f"  preview: {preview}...")
 
 

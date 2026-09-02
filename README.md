@@ -22,7 +22,9 @@ title appears in it (matched case/punctuation-insensitively). This is
 deliberately simple and resilient to page redesigns, but it means:
 
 - It tells you a title is **listed on the page** and gives you the theater's
-  link — it does not parse exact showtimes.
+  link, plus a snippet of surrounding text so you can eyeball whether it's a
+  real listing (a date/showtime nearby) or an incidental mention — it does
+  not parse an actual showtimes table.
 - It can only see what a theater has **already published**, which in practice
   means today through the next few weeks (repertory houses usually post
   roughly a month out, chains often just 1-2 weeks). There's no way to check
@@ -31,12 +33,20 @@ deliberately simple and resilient to page redesigns, but it means:
   hours via GitHub Actions) and alerts you the moment a title newly appears,
   so over a 6-month period you'd naturally be notified as soon as each
   screening is announced.
-- If a theater redesigns its site to load listings via JavaScript instead of
-  plain HTML, that theater's checks will stop finding anything. Run
-  `python -m nyc_movie_alert.cli check --debug` to see how many characters
-  were fetched from each theater — a suspiciously small number means that
-  theater's page didn't come back with real content and the URL in
-  `theaters.yaml` needs updating.
+- Matching runs against the page's **visible text** (scripts/nav/footer
+  stripped), not raw HTML, to avoid false positives from site chrome or
+  embedded JSON. Each alert is tagged `likely real` or `UNCONFIRMED` based on
+  whether a date/time-like string appears near the match.
+- Some theater sites need JavaScript to render their listings at all, or
+  block plain HTTP requests outright (bot protection). For those, fetching
+  automatically falls back to a headless Chromium browser (via Playwright)
+  that actually renders the page before reading it. This is slower and
+  doesn't guarantee success against every bot wall (a hard CAPTCHA-style
+  challenge won't be solved), but it recovers real content from JS-only
+  sites. Run `python -m nyc_movie_alert.cli diag` to see, per theater,
+  whether it succeeded on a plain fetch or needed the browser fallback, and
+  how much visible text came back — a suspiciously small number (or a
+  persistent failure) means the URL in `theaters.yaml` needs updating.
 - Once you're alerted about a movie at a theater, it won't alert you again
   for the same pair for 30 days (see `COOLDOWN_DAYS` in
   `nyc_movie_alert/state.py`), since engagements typically run for weeks.
@@ -80,7 +90,14 @@ python -m nyc_movie_alert.cli check --debug    # also prints per-theater fetch d
 
 # confirm your email settings work, without waiting for a real match
 python -m nyc_movie_alert.cli test-email
+
+# check why a theater is or isn't fetching, with no side effects at all
+python -m nyc_movie_alert.cli diag
 ```
+
+`diag` needs a headless Chromium installed for the browser fallback to work locally:
+`python -m playwright install --with-deps chromium` (the GitHub Actions workflow does this
+automatically, cached between runs).
 
 ## Running it automatically
 
@@ -100,7 +117,9 @@ To enable it:
 4. You can trigger a run immediately from the Actions tab
    ("Check NYC movie watchlist" → "Run workflow") instead of waiting for the
    schedule. Tick the "Send a test email instead" checkbox on that dialog to
-   just confirm email delivery works, without waiting for a real match.
+   just confirm email delivery works, without waiting for a real match, or
+   tick "Just fetch each theater..." to run `diag` instead (no email, no
+   state changes, no SMTP secrets needed).
 
 ### Option B: cron on your own machine
 
