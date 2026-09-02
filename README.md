@@ -14,6 +14,15 @@ It checks two kinds of theaters:
 The full list of theaters lives in [`config/theaters.yaml`](config/theaters.yaml) —
 add, remove, or edit entries there any time.
 
+## Email format
+
+Every alert email's big red header is a fixed joke — always
+"Is Barry Lyndon Playing in New York?" regardless of which movie(s) actually
+matched — with "an alert by brendan" underneath, then the real matches below
+(theater, first-showing date if found, a confidence tag, the link, and the
+matched page text). Change `_JOKE_HEADER` in `nyc_movie_alert/notifier.py` if
+you ever want a different running gag.
+
 ## How matching works (and its limits)
 
 There is no free, reliable "all NYC showtimes" API, so this works by fetching
@@ -88,9 +97,11 @@ python -m nyc_movie_alert.cli remove "Blade Runner"
 python -m nyc_movie_alert.cli list
 
 # run a check now
-python -m nyc_movie_alert.cli check            # sends email + saves state
-python -m nyc_movie_alert.cli check --dry-run  # prints matches, sends nothing
-python -m nyc_movie_alert.cli check --debug    # also prints per-theater fetch diagnostics
+python -m nyc_movie_alert.cli check                  # sends email + saves state
+python -m nyc_movie_alert.cli check --dry-run        # prints matches, sends nothing
+python -m nyc_movie_alert.cli check --debug          # also prints per-theater fetch diagnostics
+python -m nyc_movie_alert.cli check --ignore-cooldown  # re-shows already-alerted matches too,
+                                                        # without touching the real dedupe state
 
 # confirm your email settings work, without waiting for a real match
 python -m nyc_movie_alert.cli test-email

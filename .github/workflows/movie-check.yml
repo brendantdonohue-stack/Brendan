@@ -14,6 +14,10 @@ on:
         description: "Just fetch each theater and print why it succeeded/failed (no email, no state changes, no SMTP needed)"
         type: boolean
         default: false
+      ignore_cooldown:
+        description: "Real check, but ignore the 30-day dedupe history so already-alerted matches show up again (still doesn't touch the real state file)"
+        type: boolean
+        default: false
 
 permissions:
   contents: write
@@ -85,7 +89,7 @@ jobs:
           SMTP_PASSWORD: ${{ secrets.SMTP_PASSWORD }}
           ALERT_FROM: ${{ secrets.ALERT_FROM }}
           ALERT_TO: ${{ secrets.ALERT_TO }}
-        run: python -m nyc_movie_alert.cli check
+        run: python -m nyc_movie_alert.cli check ${{ inputs.ignore_cooldown && '--ignore-cooldown' || '' }}
 
       - name: Commit updated state
         run: |

@@ -4,7 +4,7 @@ Usage:
     python -m nyc_movie_alert.cli add "Movie Title"
     python -m nyc_movie_alert.cli remove "Movie Title"
     python -m nyc_movie_alert.cli list
-    python -m nyc_movie_alert.cli check [--dry-run] [--debug]
+    python -m nyc_movie_alert.cli check [--dry-run] [--debug] [--ignore-cooldown]
 """
 import argparse
 import sys
@@ -44,7 +44,7 @@ def cmd_check(args: argparse.Namespace) -> None:
         return
 
     theaters = load_theaters()
-    state = state_module.load()
+    state = {} if args.ignore_cooldown else state_module.load()
 
     alerts, statuses = run_check(movies, theaters, state, debug=args.debug)
 
@@ -67,7 +67,10 @@ def cmd_check(args: argparse.Namespace) -> None:
         print("(--dry-run: not sending email, not saving state)")
         return
 
-    state_module.save(state)
+    if args.ignore_cooldown:
+        print("(--ignore-cooldown: not saving state, so this won't affect future runs)")
+    else:
+        state_module.save(state)
 
     config = SmtpConfig.from_env()
     if config is None:
@@ -128,6 +131,12 @@ def main() -> None:
     p_check = sub.add_parser("check", help="Check theaters and send alerts for new matches")
     p_check.add_argument("--dry-run", action="store_true", help="Don't send email or save state")
     p_check.add_argument("--debug", action="store_true", help="Print per-theater fetch diagnostics")
+    p_check.add_argument(
+        "--ignore-cooldown",
+        action="store_true",
+        help="Check against a fresh (empty) history so already-notified matches show up again, "
+        "without touching the real dedupe state -- useful for previewing what's currently matching",
+    )
     p_check.set_defaults(func=cmd_check)
 
     p_test_email = sub.add_parser("test-email", help="Send a test email to confirm SMTP settings work")

@@ -83,11 +83,13 @@ def _send(subject: str, text_body: str, html_body: str, config: SmtpConfig) -> N
         server.sendmail(config.from_addr, [config.to_addr], msg.as_string())
 
 
-def _header_title(alerts: list[Alert]) -> str:
-    titles = list(dict.fromkeys(a.movie_title for a in alerts))
-    if len(titles) == 1:
-        return f"Is {titles[0]} playing?"
-    return f"{len(titles)} movies from your list are playing!"
+# A running joke: the header is always this exact phrase, no matter which
+# movie(s) actually matched -- Barry Lyndon is the bit, not a real filter.
+_JOKE_HEADER = "Is Barry Lyndon Playing in New York?"
+
+
+def _header_title(_alerts: list[Alert]) -> str:
+    return _JOKE_HEADER
 
 
 def _format_text_body(alerts: list[Alert]) -> str:
