@@ -42,10 +42,8 @@ deliberately simple and resilient to page redesigns, but it means:
   means today through the next few weeks (repertory houses usually post
   roughly a month out, chains often just 1-2 weeks). There's no way to check
   "is this playing in the next 6 months" up front — theaters simply haven't
-  scheduled that far ahead yet. Instead, this runs on a schedule (every 6
-  hours via GitHub Actions) and alerts you the moment a title newly appears,
-  so over a 6-month period you'd naturally be notified as soon as each
-  screening is announced.
+  scheduled that far ahead yet. Instead, this runs on a schedule (weekly, via
+  GitHub Actions) and alerts you as soon as a title shows up newly listed.
 - Matching runs against the page's **visible text** (scripts/nav/footer
   stripped), not raw HTML, to avoid false positives from site chrome or
   embedded JSON. Each alert is tagged `likely real` or `UNCONFIRMED` based on
@@ -122,9 +120,11 @@ automatically, cached between runs).
 
 ### Option A: GitHub Actions (recommended, no machine to keep running)
 
-A workflow at `.github/workflows/movie-check.yml` already runs `check` every
-6 hours and commits the updated `data/state.json` back to the repo so
-dedupe state survives between runs.
+A workflow at `.github/workflows/movie-check.yml` already runs `check`
+every Sunday at 8:00pm US Eastern and commits the updated `data/state.json`
+back to the repo so dedupe state survives between runs. (GitHub Actions
+cron is fixed UTC and doesn't shift for daylight saving -- see the comment
+above the cron line in that file if you want it exact through the winter.)
 
 To enable it:
 1. Push this repo to GitHub (already done if you're reading this from there).

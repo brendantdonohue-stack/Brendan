@@ -2,8 +2,12 @@ name: Check NYC movie watchlist
 
 on:
   schedule:
-    # Every 6 hours
-    - cron: "0 */6 * * *"
+    # Sundays at 8:00pm US Eastern. GitHub Actions cron is fixed UTC and
+    # doesn't shift for daylight saving, so this is pinned to EDT (UTC-4):
+    # 00:00 UTC Monday. During EST (UTC-5, roughly early Nov - mid March)
+    # this fires at 7:00pm Eastern instead of 8:00pm -- adjust the hour
+    # below by 1 (to "0 1 * * 1") if you want it exact through the winter.
+    - cron: "0 0 * * 1"
   workflow_dispatch:
     inputs:
       test_email_only:
