@@ -17,8 +17,10 @@ theaters:
     url: https://metrograph.com/film/
   - name: Angelika Film Center
     url: https://angelikafilmcenter.com/nyc
-  - name: Nitehawk Cinema
-    url: https://nitehawkcinema.com/
+  - name: Nitehawk Prospect Park
+    url: https://nitehawkcinema.com/prospectpark/
+  - name: Nitehawk Williamsburg
+    url: https://nitehawkcinema.com/williamsburg/
   - name: Quad Cinema
     url: https://quadcinema.com/
   - name: BAM Rose Cinemas
@@ -38,6 +40,6 @@ theaters:
   - name: AMC 34th Street 14
     url: https://www.amctheatres.com/movie-theatres/new-york-city/amc-34th-street-14
   - name: Regal Union Square
-    url: https://www.regmovies.com/theatres/regal-union-square-screenx-4dx-imax-rpx-8455
+    url: https://www.regmovies.com/theatres/regal-union-square
   - name: Alamo Drafthouse Lower Manhattan
     url: https://drafthouse.com/nyc/theater/lower-manhattan
