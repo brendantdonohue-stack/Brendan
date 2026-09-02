@@ -1,0 +1,153 @@
+"""Command-line interface: manage the watchlist and run checks.
+
+Usage:
+    python -m nyc_movie_alert.cli add "Movie Title"
+    python -m nyc_movie_alert.cli remove "Movie Title"
+    python -m nyc_movie_alert.cli list
+    python -m nyc_movie_alert.cli check [--dry-run] [--debug] [--ignore-cooldown]
+"""
+import argparse
+import sys
+
+from . import state as state_module
+from . import watchlist
+from .checker import run_check
+from .extract import visible_text
+from .fetcher import fetch
+from .notifier import SmtpConfig, send_alert_email, send_test_email
+from .theaters import load_theaters
+
+
+def cmd_add(args: argparse.Namespace) -> None:
+    added = watchlist.add_movie(args.title)
+    print(f'Added "{args.title}".' if added else f'"{args.title}" is already on your list.')
+
+
+def cmd_remove(args: argparse.Namespace) -> None:
+    removed = watchlist.remove_movie(args.title)
+    print(f'Removed "{args.title}".' if removed else f'"{args.title}" was not on your list.')
+
+
+def cmd_list(_args: argparse.Namespace) -> None:
+    movies = watchlist.list_movies()
+    if not movies:
+        print("Your watchlist is empty. Add one with: add \"Movie Title\"")
+        return
+    for m in movies:
+        print(f'- {m["title"]} (added {m["added"]})')
+
+
+def cmd_check(args: argparse.Namespace) -> None:
+    movies = watchlist.list_movies()
+    if not movies:
+        print("Watchlist is empty, nothing to check.")
+        return
+
+    theaters = load_theaters()
+    state = {} if args.ignore_cooldown else state_module.load()
+
+    alerts, statuses = run_check(movies, theaters, state, debug=args.debug)
+
+    failed = [s for s in statuses if not s.ok]
+    if failed:
+        print(f"Warning: failed to fetch {len(failed)} theater page(s):", file=sys.stderr)
+        for s in failed:
+            print(f"  - {s.theater.name}: {s.error} ({s.theater.url})", file=sys.stderr)
+
+    if not alerts:
+        print("No new matches.")
+        return
+
+    print(f"Found {len(alerts)} new match(es):")
+    for a in alerts:
+        confidence = "likely real" if a.likely_real else "UNCONFIRMED"
+        print(f'  - "{a.movie_title}" at {a.theater_name} [{confidence}] -> {a.link or a.theater_url}')
+
+    if args.dry_run:
+        print("(--dry-run: not sending email, not saving state)")
+        return
+
+    if args.ignore_cooldown:
+        print("(--ignore-cooldown: not saving state, so this won't affect future runs)")
+    else:
+        state_module.save(state)
+
+    config = SmtpConfig.from_env()
+    if config is None:
+        print(
+            "SMTP is not configured (set SMTP_HOST/SMTP_USER/SMTP_PASSWORD/ALERT_TO "
+            "as env vars or in config/config.yaml) -- skipping email send.",
+            file=sys.stderr,
+        )
+        return
+    send_alert_email(alerts, config)
+    print("Alert email sent.")
+
+
+def cmd_diag(_args: argparse.Namespace) -> None:
+    """Pure read-only fetch diagnostics: no watchlist matching, no state
+    changes, no email. Prints exactly why each theater succeeded or failed
+    to fetch, so a broken URL/blocked request can be diagnosed directly."""
+    for theater in load_theaters():
+        result = fetch(theater.url)
+        tag = " [rendered via headless browser]" if result.rendered else ""
+        if not result.ok:
+            print(f'"{theater.name}": FAILED -- {result.error}{tag}')
+            continue
+        text = visible_text(result.html)
+        preview = text[:200].replace("\n", " ")
+        print(f'"{theater.name}": OK, {len(result.html)} raw chars, {len(text)} visible chars{tag}')
+        print(f"  preview: {preview}...")
+
+
+def cmd_test_email(_args: argparse.Namespace) -> None:
+    config = SmtpConfig.from_env()
+    if config is None:
+        print(
+            "SMTP is not configured (set SMTP_HOST/SMTP_USER/SMTP_PASSWORD/ALERT_TO "
+            "as env vars or in config/config.yaml).",
+            file=sys.stderr,
+        )
+        sys.exit(1)
+    send_test_email(config)
+    print(f"Test email sent to {', '.join(config.to_addrs)}.")
+
+
+def main() -> None:
+    parser = argparse.ArgumentParser(description="NYC movie watchlist alert tool")
+    sub = parser.add_subparsers(dest="command", required=True)
+
+    p_add = sub.add_parser("add", help="Add a movie to your watchlist")
+    p_add.add_argument("title")
+    p_add.set_defaults(func=cmd_add)
+
+    p_remove = sub.add_parser("remove", help="Remove a movie from your watchlist")
+    p_remove.add_argument("title")
+    p_remove.set_defaults(func=cmd_remove)
+
+    p_list = sub.add_parser("list", help="Show your watchlist")
+    p_list.set_defaults(func=cmd_list)
+
+    p_check = sub.add_parser("check", help="Check theaters and send alerts for new matches")
+    p_check.add_argument("--dry-run", action="store_true", help="Don't send email or save state")
+    p_check.add_argument("--debug", action="store_true", help="Print per-theater fetch diagnostics")
+    p_check.add_argument(
+        "--ignore-cooldown",
+        action="store_true",
+        help="Check against a fresh (empty) history so already-notified matches show up again, "
+        "without touching the real dedupe state -- useful for previewing what's currently matching",
+    )
+    p_check.set_defaults(func=cmd_check)
+
+    p_test_email = sub.add_parser("test-email", help="Send a test email to confirm SMTP settings work")
+    p_test_email.set_defaults(func=cmd_test_email)
+
+    p_diag = sub.add_parser("diag", help="Fetch each theater and print why it succeeded/failed (no side effects)")
+    p_diag.set_defaults(func=cmd_diag)
+
+    args = parser.parse_args()
+    args.func(args)
+
+
+if __name__ == "__main__":
+    main()
