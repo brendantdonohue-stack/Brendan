@@ -7,16 +7,16 @@ from bs4 import BeautifulSoup
 
 from .matcher import normalize
 
-# Common ways theater sites print dates/showtimes near a title.
+# Matches a date/time near a title, e.g. "Wed Aug 26 10:20pm", "Aug 26",
+# or "9/2". Every part but the month+day (or mm/dd) core is optional, so it
+# still matches a bare date when there's no weekday or time alongside it.
 _DATE_PATTERN = re.compile(
-    r"\b("
-    r"(mon|tue|tues|wed|thu|thur|thurs|fri|sat|sun)(day)?s?\.?|"
-    r"(jan|feb|mar|apr|may|jun|jul|aug|sep|sept|oct|nov|dec)[a-z]*\.?\s+\d{1,2}|"
-    r"\d{1,2}/\d{1,2}(/\d{2,4})?|"
-    r"\d{1,2}:\d{2}\s*(am|pm)|"
-    r"now\s+playing|"
-    r"through\s+\w+\s+\d{1,2}"
-    r")\b",
+    r"\b(?:(?:mon|tue|tues|wed|thu|thur|thurs|fri|sat|sun)[a-z]*\.?,?\s*)?"
+    r"(?:"
+    r"(?:jan|feb|mar|apr|may|jun|jul|aug|sep|sept|oct|nov|dec)[a-z]*\.?\s+\d{1,2}"
+    r"|\d{1,2}/\d{1,2}(?:/\d{2,4})?"
+    r")"
+    r"(?:,?\s*\d{1,2}:\d{2}\s*(?:am|pm))?",
     re.IGNORECASE,
 )
 
@@ -64,8 +64,17 @@ def find_context_snippet(title: str, text: str, window: int = 100) -> str | None
     return snippet
 
 
+def extract_show_date(snippet: str) -> str | None:
+    """Best-effort extraction of a date/time string near a match (e.g.
+    'Wed Aug 26 10:20pm'), so the alert can say when the film is first
+    showing rather than just that it's listed somewhere on the page.
+    Returns the raw matched text, or None if nothing date-shaped is nearby."""
+    match = _DATE_PATTERN.search(snippet)
+    return match.group(0).strip() if match else None
+
+
 def has_nearby_date(snippet: str) -> bool:
     """Whether a context snippet contains something that looks like a date,
     weekday, or showtime -- a signal (not proof) that this is a real
     listing rather than an incidental title mention."""
-    return bool(_DATE_PATTERN.search(snippet))
+    return extract_show_date(snippet) is not None

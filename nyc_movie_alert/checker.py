@@ -2,7 +2,7 @@
 from dataclasses import dataclass
 
 from . import state as state_module
-from .extract import find_context_snippet, has_nearby_date, visible_text
+from .extract import extract_show_date, find_context_snippet, visible_text
 from .fetcher import fetch
 from .matcher import find_link_for_title, find_match
 from .notifier import Alert
@@ -53,7 +53,7 @@ def run_check(
                 continue
             link = find_link_for_title(title, html)
             context = find_context_snippet(title, text)
-            likely_real = has_nearby_date(context) if context else False
+            show_date = extract_show_date(context) if context else None
             alerts.append(
                 Alert(
                     movie_title=title,
@@ -61,7 +61,8 @@ def run_check(
                     theater_url=theater.url,
                     link=link,
                     context=context,
-                    likely_real=likely_real,
+                    show_date=show_date,
+                    likely_real=show_date is not None,
                 )
             )
             state_module.mark_notified(state, title, theater.name)

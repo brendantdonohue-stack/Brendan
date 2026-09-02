@@ -24,7 +24,11 @@ deliberately simple and resilient to page redesigns, but it means:
 - It tells you a title is **listed on the page** and gives you the theater's
   link, plus a snippet of surrounding text so you can eyeball whether it's a
   real listing (a date/showtime nearby) or an incidental mention — it does
-  not parse an actual showtimes table.
+  not parse an actual showtimes table. When a date/time-shaped string (e.g.
+  "Wed Sep 10 7:00pm") appears near the match, the email includes it as
+  "First showing" and marks the alert `likely a real listing`; when nothing
+  date-shaped is found nearby, it's marked `UNCONFIRMED` instead — click
+  through and check before making plans either way.
 - It can only see what a theater has **already published**, which in practice
   means today through the next few weeks (repertory houses usually post
   roughly a month out, chains often just 1-2 weeks). There's no way to check
