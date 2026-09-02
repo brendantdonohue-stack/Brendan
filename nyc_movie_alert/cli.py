@@ -12,6 +12,8 @@ import sys
 from . import state as state_module
 from . import watchlist
 from .checker import run_check
+from .extract import visible_text
+from .fetcher import fetch
 from .notifier import SmtpConfig, send_alert_email, send_test_email
 from .theaters import load_theaters
 
@@ -50,7 +52,7 @@ def cmd_check(args: argparse.Namespace) -> None:
     if failed:
         print(f"Warning: failed to fetch {len(failed)} theater page(s):", file=sys.stderr)
         for s in failed:
-            print(f"  - {s.theater.name} ({s.theater.url})", file=sys.stderr)
+            print(f"  - {s.theater.name}: {s.error} ({s.theater.url})", file=sys.stderr)
 
     if not alerts:
         print("No new matches.")
@@ -58,7 +60,8 @@ def cmd_check(args: argparse.Namespace) -> None:
 
     print(f"Found {len(alerts)} new match(es):")
     for a in alerts:
-        print(f'  - "{a.movie_title}" at {a.theater_name} -> {a.link or a.theater_url}')
+        confidence = "likely real" if a.likely_real else "UNCONFIRMED"
+        print(f'  - "{a.movie_title}" at {a.theater_name} [{confidence}] -> {a.link or a.theater_url}')
 
     if args.dry_run:
         print("(--dry-run: not sending email, not saving state)")
@@ -76,6 +79,21 @@ def cmd_check(args: argparse.Namespace) -> None:
         return
     send_alert_email(alerts, config)
     print("Alert email sent.")
+
+
+def cmd_diag(_args: argparse.Namespace) -> None:
+    """Pure read-only fetch diagnostics: no watchlist matching, no state
+    changes, no email. Prints exactly why each theater succeeded or failed
+    to fetch, so a broken URL/blocked request can be diagnosed directly."""
+    for theater in load_theaters():
+        result = fetch(theater.url)
+        if not result.ok:
+            print(f'"{theater.name}": FAILED -- {result.error}')
+            continue
+        text = visible_text(result.html)
+        preview = text[:200].replace("\n", " ")
+        print(f'"{theater.name}": OK, {len(result.html)} raw chars, {len(text)} visible chars')
+        print(f"  preview: {preview}...")
 
 
 def cmd_test_email(_args: argparse.Namespace) -> None:
@@ -113,6 +131,9 @@ def main() -> None:
 
     p_test_email = sub.add_parser("test-email", help="Send a test email to confirm SMTP settings work")
     p_test_email.set_defaults(func=cmd_test_email)
+
+    p_diag = sub.add_parser("diag", help="Fetch each theater and print why it succeeded/failed (no side effects)")
+    p_diag.set_defaults(func=cmd_diag)
 
     args = parser.parse_args()
     args.func(args)

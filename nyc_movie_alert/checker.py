@@ -2,7 +2,8 @@
 from dataclasses import dataclass
 
 from . import state as state_module
-from .fetcher import fetch_html
+from .extract import find_context_snippet, has_nearby_date, visible_text
+from .fetcher import fetch
 from .matcher import find_link_for_title, find_match
 from .notifier import Alert
 from .theaters import Theater
@@ -13,6 +14,8 @@ class FetchStatus:
     theater: Theater
     ok: bool
     length: int
+    status_code: int | None = None
+    error: str | None = None
 
 
 def run_check(
@@ -24,26 +27,48 @@ def run_check(
     statuses: list[FetchStatus] = []
 
     for theater in theaters:
-        html = fetch_html(theater.url)
-        ok = html is not None
-        statuses.append(FetchStatus(theater=theater, ok=ok, length=len(html) if html else 0))
-        if not ok:
+        result = fetch(theater.url)
+        statuses.append(
+            FetchStatus(
+                theater=theater,
+                ok=result.ok,
+                length=len(result.html) if result.html else 0,
+                status_code=result.status_code,
+                error=result.error,
+            )
+        )
+        if not result.ok:
             continue
+
+        html = result.html
+        text = visible_text(html)
 
         for movie in movies:
             title = movie["title"]
-            if not find_match(title, html):
+            if not find_match(title, text):
                 continue
             if state_module.already_notified(state, title, theater.name):
                 continue
             link = find_link_for_title(title, html)
+            context = find_context_snippet(title, text)
+            likely_real = has_nearby_date(context) if context else False
             alerts.append(
-                Alert(movie_title=title, theater_name=theater.name, theater_url=theater.url, link=link)
+                Alert(
+                    movie_title=title,
+                    theater_name=theater.name,
+                    theater_url=theater.url,
+                    link=link,
+                    context=context,
+                    likely_real=likely_real,
+                )
             )
             state_module.mark_notified(state, title, theater.name)
 
     if debug:
         for s in statuses:
-            print(f"[debug] {s.theater.name}: {'OK' if s.ok else 'FAILED'} ({s.length} chars)")
+            if s.ok:
+                print(f"[debug] {s.theater.name}: OK ({s.length} chars)")
+            else:
+                print(f"[debug] {s.theater.name}: FAILED ({s.error})")
 
     return alerts, statuses

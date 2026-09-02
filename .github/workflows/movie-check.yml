@@ -10,6 +10,10 @@ on:
         description: "Send a test email instead of running the real check (to confirm SMTP works)"
         type: boolean
         default: false
+      diag_only:
+        description: "Just fetch each theater and print why it succeeded/failed (no email, no state changes, no SMTP needed)"
+        type: boolean
+        default: false
 
 permissions:
   contents: write
@@ -28,6 +32,7 @@ jobs:
         run: pip install -r requirements.txt
 
       - name: Check required secrets
+        if: ${{ !inputs.diag_only }}
         env:
           SMTP_HOST: ${{ secrets.SMTP_HOST }}
           SMTP_USER: ${{ secrets.SMTP_USER }}
@@ -47,8 +52,12 @@ jobs:
           fi
           echo "All required secrets are present."
 
+      - name: Run diagnostics
+        if: ${{ inputs.diag_only }}
+        run: python -m nyc_movie_alert.cli diag
+
       - name: Send test email
-        if: ${{ inputs.test_email_only }}
+        if: ${{ inputs.test_email_only && !inputs.diag_only }}
         env:
           SMTP_HOST: ${{ secrets.SMTP_HOST }}
           SMTP_PORT: ${{ secrets.SMTP_PORT }}
@@ -59,7 +68,7 @@ jobs:
         run: python -m nyc_movie_alert.cli test-email
 
       - name: Run watchlist check
-        if: ${{ !inputs.test_email_only }}
+        if: ${{ !inputs.test_email_only && !inputs.diag_only }}
         env:
           SMTP_HOST: ${{ secrets.SMTP_HOST }}
           SMTP_PORT: ${{ secrets.SMTP_PORT }}

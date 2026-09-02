@@ -23,6 +23,8 @@ class Alert:
     theater_name: str
     theater_url: str
     link: str | None = None
+    context: str | None = None
+    likely_real: bool = False
 
 
 @dataclass
@@ -64,12 +66,18 @@ class SmtpConfig:
 
 
 def _format_body(alerts: list[Alert]) -> str:
-    lines = ["A movie from your watchlist is playing in NYC:", ""]
+    lines = ["A movie from your watchlist matched a theater listing page in NYC:", ""]
     for alert in alerts:
-        line = f"- \"{alert.movie_title}\" at {alert.theater_name}"
-        lines.append(line)
+        confidence = "likely a real listing" if alert.likely_real else "UNCONFIRMED, please check"
+        lines.append(f'- "{alert.movie_title}" at {alert.theater_name} ({confidence})')
         lines.append(f"  {alert.link or alert.theater_url}")
-    lines.append("")
+        if alert.context:
+            lines.append(f'  page text: "...{alert.context}..."')
+        lines.append("")
+    lines.append(
+        "Note: this is a text match on the theater's page, not a parsed showtime -- "
+        "always confirm on the theater's own site before making plans."
+    )
     lines.append("(Sent by your nyc-movie-alert watchlist checker.)")
     return "\n".join(lines)
 
