@@ -90,6 +90,10 @@ def _send(subject: str, text_body: str, html_body: str, config: SmtpConfig) -> N
 # A running joke: the header is always this exact phrase, no matter which
 # movie(s) actually matched -- Barry Lyndon is the bit, not a real filter.
 _JOKE_HEADER = "Is Barry Lyndon Playing in New York?"
+_TAGLINE = (
+    "a vibecoded weekly alert to see if Barry Lyndon and other interesting "
+    "pictures are playing on the big screen"
+)
 
 
 def _header_title(_alerts: list[Alert]) -> str:
@@ -97,7 +101,7 @@ def _header_title(_alerts: list[Alert]) -> str:
 
 
 def _format_text_body(alerts: list[Alert]) -> str:
-    lines = [_header_title(alerts), "an alert by brendan", ""]
+    lines = [_header_title(alerts), "an alert by brendan", _TAGLINE, ""]
     for alert in alerts:
         confidence = "likely a real listing" if alert.likely_real else "UNCONFIRMED, please check"
         lines.append(f'- "{alert.movie_title}" at {alert.theater_name} ({confidence})')
@@ -158,8 +162,11 @@ def _format_html_body(alerts: list[Alert]) -> str:
       <div style="font-size:28px; font-weight:bold; color:#c62828; line-height:1.2;">
         {esc(_header_title(alerts))}
       </div>
-      <div style="font-size:14px; color:#777; margin:4px 0 24px;">
+      <div style="font-size:14px; color:#777; margin:4px 0;">
         an alert by brendan
+      </div>
+      <div style="font-size:12px; color:#999; margin:0 0 24px;">
+        {esc(_TAGLINE)}
       </div>
       {''.join(cards)}
       <div style="font-size:12px; color:#999; margin-top:8px;">
@@ -182,14 +189,16 @@ def send_test_email(config: SmtpConfig) -> None:
     """Sends a canned message to confirm SMTP credentials and delivery work,
     independent of whether any real watchlist match currently exists."""
     text_body = (
+        f"Test email\nan alert by brendan\n{_TAGLINE}\n\n"
         "This is a test email from nyc-movie-alert.\n\n"
         "If you're reading this, your SMTP settings are correct and alerts "
         "will reach this address when a real match is found.\n"
     )
-    html_body = """
+    html_body = f"""
     <div style="font-family: Arial, Helvetica, sans-serif; max-width:600px; margin:0 auto;">
       <div style="font-size:28px; font-weight:bold; color:#c62828;">Test email</div>
-      <div style="font-size:14px; color:#777; margin:4px 0 24px;">an alert by brendan</div>
+      <div style="font-size:14px; color:#777; margin:4px 0;">an alert by brendan</div>
+      <div style="font-size:12px; color:#999; margin:0 0 24px;">{html_lib.escape(_TAGLINE)}</div>
       <p>This is a test email from nyc-movie-alert.</p>
       <p>If you're reading this, your SMTP settings are correct and alerts will
       reach this address when a real match is found.</p>
