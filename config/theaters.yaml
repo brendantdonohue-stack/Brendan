@@ -18,17 +18,17 @@ theaters:
   - name: Angelika Film Center
     url: https://angelikafilmcenter.com/nyc
   - name: Nitehawk Cinema
-    url: https://nitehawkcinema.com/films/
+    url: https://nitehawkcinema.com/
   - name: Quad Cinema
-    url: https://quadcinema.com/now-playing
+    url: https://quadcinema.com/
   - name: BAM Rose Cinemas
     url: https://www.bam.org/film
   - name: Roxy Cinema
-    url: https://roxycinematribeca.com/calendar
+    url: https://roxycinematribeca.com/
   - name: Museum of the Moving Image
-    url: https://movingimage.us/calendar/
+    url: https://movingimage.us/
   - name: Anthology Film Archives
-    url: https://anthologyfilmarchives.org/film_screenings/showtimes
+    url: https://anthologyfilmarchives.org/
 
   # --- Mainstream chains (mostly current first-run releases) ---
   - name: AMC Empire 25
