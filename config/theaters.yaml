@@ -1,0 +1,45 @@
+# NYC theaters to check. Each entry needs a name and the URL of its
+# "now playing" / calendar page.
+#
+# These URLs are best-effort and theater websites redesign periodically.
+# If a theater stops matching, run `python -m nyc_movie_alert.cli check --debug`
+# to see how much text was fetched from each page, and update the URL below.
+#
+# Add or remove theaters freely -- this file is just a plain list.
+
+theaters:
+  # --- Indie / repertory (frequently run revival & classic screenings) ---
+  - name: Film Forum
+    url: https://filmforum.org/now_playing
+  - name: IFC Center
+    url: https://www.ifccenter.com/
+  - name: Metrograph
+    url: https://metrograph.com/film/
+  - name: Angelika Film Center
+    url: https://angelikafilmcenter.com/nyc
+  - name: Nitehawk Prospect Park
+    url: https://nitehawkcinema.com/prospectpark/
+  - name: Nitehawk Williamsburg
+    url: https://nitehawkcinema.com/williamsburg/
+  - name: Quad Cinema
+    url: https://quadcinema.com/
+  - name: BAM Rose Cinemas
+    url: https://www.bam.org/film
+  - name: Roxy Cinema
+    url: https://roxycinematribeca.com/
+  - name: Museum of the Moving Image
+    url: https://movingimage.us/
+  - name: Anthology Film Archives
+    url: https://anthologyfilmarchives.org/
+
+  # --- Mainstream chains (mostly current first-run releases) ---
+  - name: AMC Empire 25
+    url: https://www.amctheatres.com/movie-theatres/new-york-city/amc-empire-25
+  - name: AMC Lincoln Square 13
+    url: https://www.amctheatres.com/movie-theatres/new-york-city/amc-lincoln-square-13
+  - name: AMC 34th Street 14
+    url: https://www.amctheatres.com/movie-theatres/new-york-city/amc-34th-street-14
+  - name: Regal Union Square
+    url: https://www.regmovies.com/theatres/regal-union-square
+  - name: Alamo Drafthouse Lower Manhattan
+    url: https://drafthouse.com/nyc/theater/lower-manhattan

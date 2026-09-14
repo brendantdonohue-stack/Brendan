@@ -1,0 +1,104 @@
+name: Check NYC movie watchlist
+
+on:
+  schedule:
+    # Sundays at 8:00pm US Eastern. GitHub Actions cron is fixed UTC and
+    # doesn't shift for daylight saving, so this is pinned to EDT (UTC-4):
+    # 00:00 UTC Monday. During EST (UTC-5, roughly early Nov - mid March)
+    # this fires at 7:00pm Eastern instead of 8:00pm -- adjust the hour
+    # below by 1 (to "0 1 * * 1") if you want it exact through the winter.
+    - cron: "0 0 * * 1"
+  workflow_dispatch:
+    inputs:
+      test_email_only:
+        description: "Send a test email instead of running the real check (to confirm SMTP works)"
+        type: boolean
+        default: false
+      diag_only:
+        description: "Just fetch each theater and print why it succeeded/failed (no email, no state changes, no SMTP needed)"
+        type: boolean
+        default: false
+      ignore_cooldown:
+        description: "Real check, but ignore the 30-day dedupe history so already-alerted matches show up again (still doesn't touch the real state file)"
+        type: boolean
+        default: false
+
+permissions:
+  contents: write
+
+jobs:
+  check:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: Install dependencies
+        run: pip install -r requirements.txt
+
+      - name: Cache Playwright browsers
+        uses: actions/cache@v4
+        with:
+          path: ~/.cache/ms-playwright
+          key: playwright-${{ runner.os }}-${{ hashFiles('requirements.txt') }}
+
+      - name: Install Playwright browser
+        run: python -m playwright install --with-deps chromium
+
+      - name: Check required secrets
+        if: ${{ !inputs.diag_only }}
+        env:
+          SMTP_HOST: ${{ secrets.SMTP_HOST }}
+          SMTP_USER: ${{ secrets.SMTP_USER }}
+          SMTP_PASSWORD: ${{ secrets.SMTP_PASSWORD }}
+          ALERT_TO: ${{ secrets.ALERT_TO }}
+        run: |
+          missing=""
+          [ -z "$SMTP_HOST" ] && missing="$missing SMTP_HOST"
+          [ -z "$SMTP_USER" ] && missing="$missing SMTP_USER"
+          [ -z "$SMTP_PASSWORD" ] && missing="$missing SMTP_PASSWORD"
+          [ -z "$ALERT_TO" ] && missing="$missing ALERT_TO"
+          if [ -n "$missing" ]; then
+            echo "::error::Missing required repository secrets:$missing"
+            echo "Add them at: https://github.com/${{ github.repository }}/settings/secrets/actions"
+            echo "(SMTP_PORT and ALERT_FROM are optional and fall back to defaults, so they're not checked here.)"
+            exit 1
+          fi
+          echo "All required secrets are present."
+
+      - name: Run diagnostics
+        if: ${{ inputs.diag_only }}
+        run: python -m nyc_movie_alert.cli diag
+
+      - name: Send test email
+        if: ${{ inputs.test_email_only && !inputs.diag_only }}
+        env:
+          SMTP_HOST: ${{ secrets.SMTP_HOST }}
+          SMTP_PORT: ${{ secrets.SMTP_PORT }}
+          SMTP_USER: ${{ secrets.SMTP_USER }}
+          SMTP_PASSWORD: ${{ secrets.SMTP_PASSWORD }}
+          ALERT_FROM: ${{ secrets.ALERT_FROM }}
+          ALERT_TO: ${{ secrets.ALERT_TO }}
+        run: python -m nyc_movie_alert.cli test-email
+
+      - name: Run watchlist check
+        if: ${{ !inputs.test_email_only && !inputs.diag_only }}
+        env:
+          SMTP_HOST: ${{ secrets.SMTP_HOST }}
+          SMTP_PORT: ${{ secrets.SMTP_PORT }}
+          SMTP_USER: ${{ secrets.SMTP_USER }}
+          SMTP_PASSWORD: ${{ secrets.SMTP_PASSWORD }}
+          ALERT_FROM: ${{ secrets.ALERT_FROM }}
+          ALERT_TO: ${{ secrets.ALERT_TO }}
+        run: python -m nyc_movie_alert.cli check ${{ inputs.ignore_cooldown && '--ignore-cooldown' || '' }}
+
+      - name: Commit updated state
+        run: |
+          git config user.name "movie-alert-bot"
+          git config user.email "actions@users.noreply.github.com"
+          git add data/state.json
+          git diff --cached --quiet || git commit -m "Update alert state [skip ci]"
+          git push
